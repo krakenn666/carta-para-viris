@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Para Viri</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        /* Reset y variables base autocontenidas */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-dark: #0b0c0e;
+            --bg-glow: #1b1e24;
+            --text-bone: #e6e6e6;
+            --text-soft: #c5c9d1;
+            --silver-rim: #cfd6df;
+            --silver-mid: #8a939e;
+        }
+
+        html, body {
+            width: 100%;
+            min-height: 100vh;
+            background-color: var(--bg-dark);
+            background-image: radial-gradient(circle at 50% 35%, var(--bg-glow) 0%, #101216 48%, #07080a 100%);
+            color: var(--text-bone);
+            font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        /* Canvas fijo para pétalos cayendo */
+        #petals-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Textura sutil de niebla y motas de luz */
+        .mist-layer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 2;
+            background:
+                radial-gradient(ellipse at 25% 20%, rgba(140, 152, 170, 0.06) 0%, transparent 55%),
+                radial-gradient(ellipse at 75% 70%, rgba(120, 132, 150, 0.05) 0%, transparent 60%);
+        }
+
+        /* =========================================================
+           1. PANTALLA DE INICIO (PORTADA)
+           ========================================================= */
+        #intro-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            text-align: center;
+            background: radial-gradient(circle at 50% 38%, #22262e 0%, #101216 52%, #08090b 100%);
+            transition: opacity 1.1s ease, transform 1.1s ease, visibility 1.1s ease;
+        }
+
+        #intro-screen.hidden-intro {
+            opacity: 0;
+            transform: scale(1.03);
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .rose-trigger {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 8px;
+            transition: transform 0.45s ease, filter 0.45s ease;
+            animation: floatRose 4.8s ease-in-out infinite;
+        }
+
+        .rose-trigger:hover {
+            transform: scale(1.04);
+            filter: drop-shadow(0 0 28px rgba(207, 214, 223, 0.25));
+        }
+
+        .rose-trigger:active {
+            transform: scale(0.97);
+        }
+
+        @keyframes floatRose {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-7px); }
+        }
+
+        .hero-rose-svg {
+            width: 300px;
+            height: 460px;
+            max-width: 82vw;
+            height: auto;
+            display: block;
+            filter: drop-shadow(0 20px 35px rgba(0, 0, 0, 0.95));
+        }
+
+        .intro-prompt {
+            margin-top: 12px;
+            max-width: 440px;
+            font-size: clamp(1.3rem, 3.8vw, 1.65rem);
+            font-style: italic;
+            font-weight: 400;
+            line-height: 1.45;
+            color: #f0f2f5;
+            text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+            letter-spacing: 0.02em;
+        }
+
+        .intro-hint {
+            margin-top: 14px;
+            font-size: 0.78rem;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            color: #9ba3b0;
+            animation: pulseText 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulseText {
+            0%, 100% { opacity: 0.45; }
+            50% { opacity: 0.95; }
+        }
+
+        /* =========================================================
+           2. CONTENEDOR PRINCIPAL DE LA CARTA
+           ========================================================= */
+        #letter-wrapper {
+            display: none;
+            opacity: 0;
+            position: relative;
+            z-index: 15;
+            width: 100%;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 72px 24px 96px 24px;
+            transition: opacity 1.2s ease;
+        }
+
+        #letter-wrapper.active-letter {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Botones flotantes superiores (Volver y Música) */
+        .floating-btn {
+            position: fixed;
+            top: 18px;
+            z-index: 25;
+            background: rgba(18, 20, 26, 0.78);
+            border: 1px solid rgba(207, 214, 223, 0.22);
+            color: #cfd6df;
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 0.92rem;
+            letter-spacing: 0.08em;
+            padding: 7px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+            backdrop-filter: blur(6px);
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .floating-btn:hover {
+            background: rgba(34, 38, 48, 0.95);
+            border-color: rgba(207, 214, 223, 0.5);
+            color: #ffffff;
+        }
+
+        .back-to-cover-btn {
+            left: 18px;
+        }
+
+        .music-toggle-btn {
+            right: 18px;
+        }
+
+        /* Encabezado con "Hola viri." y rosa negra a la derecha */
+        .letter-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding-bottom: 24px;
+            margin-bottom: 36px;
+            border-bottom: 1px solid rgba(207, 214, 223, 0.16);
+        }
+
+        .greeting-title {
+            font-size: clamp(2.2rem, 6vw, 3.1rem);
+            font-weight: 500;
+            color: #f3f4f6;
+            letter-spacing: 0.02em;
+        }
+
+        .inline-rose-svg {
+            width: 92px;
+            height: 135px;
+            flex-shrink: 0;
+            display: block;
+            filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.85));
+        }
+
+        /* Bloques de texto de la carta */
+        .letter-body {
+            display: flex;
+            flex-direction: column;
+            gap: 34px;
+        }
+
+        .letter-paragraph {
+            font-size: clamp(1.22rem, 2.8vw, 1.38rem);
+            line-height: 1.85;
+            color: var(--text-bone);
+            font-weight: 400;
+        }
+
+        /* Frases destacadas en grande */
+        .highlight-large {
+            font-size: clamp(1.65rem, 4.2vw, 2.15rem);
+            line-height: 1.48;
+            font-weight: 600;
+            color: #ffffff;
+            padding: 12px 0;
+            letter-spacing: 0.01em;
+            text-shadow: 0 2px 18px rgba(0, 0, 0, 0.7);
+        }
+
+        .highlight-italic-large {
+            font-size: clamp(1.75rem, 4.4vw, 2.25rem);
+            font-style: italic;
+            font-weight: 500;
+            color: #f5f7fa;
+            padding-top: 8px;
+        }
+
+        /* Separadores decorativos con rosa negra */
+        .rose-divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin: 14px 0;
+        }
+
+        .divider-line {
+            height: 1px;
+            width: 90px;
+            background: linear-gradient(90deg, transparent, rgba(207, 214, 223, 0.35), transparent);
+        }
+
+        .divider-rose-svg {
+            width: 110px;
+            height: 165px;
+            display: block;
+            filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.9));
+        }
+
+        /* Bloques de cita poética */
+        .poetic-quote-box {
+            position: relative;
+            padding: 26px 28px;
+            margin: 8px 0;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015));
+            border-left: 2px solid #9aa3b2;
+            border-radius: 0 12px 12px 0;
+        }
+
+        .poetic-quote-text {
+            font-size: clamp(1.28rem, 3vw, 1.48rem);
+            font-style: italic;
+            line-height: 1.78;
+            color: #f0f2f6;
+        }
+
+        .quote-with-rose {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+        }
+
+        /* Lista de deseos de diciembre */
+        .wishes-block {
+            padding-left: 22px;
+            border-left: 1px solid rgba(207, 214, 223, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+            font-size: clamp(1.3rem, 3.1vw, 1.52rem);
+            font-style: italic;
+            color: #f2f4f8;
+        }
+
+        /* =========================================================
+           3. PIE DE CARTA (NOMBRE A LA IZQUIERDA, FIRMA A LA DERECHA)
+           ========================================================= */
+        .letter-footer {
+            margin-top: 64px;
+            padding-top: 32px;
+            border-top: 1px solid rgba(207, 214, 223, 0.18);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .author-names {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            text-align: left;
+        }
+
+        .author-name-line {
+            font-size: 1.65rem;
+            font-weight: 500;
+            color: #f5f5f5;
+            letter-spacing: 0.04em;
+            line-height: 1.25;
+        }
+
+        .signature-box {
+            width: 240px;
+            height: 110px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+        }
+
+        .signature-svg {
+            width: 230px;
+            height: 105px;
+            display: block;
+            overflow: visible;
+            filter: drop-shadow(0 2px 10px rgba(255, 255, 255, 0.22));
+        }
+
+        /* Animación de aparición suave al hacer scroll */
+        .fade-section {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.9s ease, transform 0.9s ease;
+        }
+
+        .fade-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (max-width: 520px) {
+            .letter-footer {
+                align-items: flex-end;
+            }
+            .signature-box {
+                width: 190px;
+                height: 90px;
+            }
+            .signature-svg {
+                width: 185px;
+                height: 85px;
+            }
+            .floating-btn {
+                font-size: 0.82rem;
+                padding: 6px 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- AUDIO DE FONDO: Coloca tu archivo de audio en la misma carpeta como "cancion.mp3" -->
+    <audio id="bg-music" preload="auto" loop>
+        <source src="cancion.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Capa de niebla atmosférica -->
+    <div class="mist-layer" aria-hidden="true"></div>
+
+    <!-- Canvas HTML5 de pétalos negros con bordes plateados cayendo -->
+    <canvas id="petals-canvas"></canvas>
+
+    <!-- =================================================================== -->
+    <!-- DEFINICIONES SVG COMPARTIDAS PARA ROSAS NEGRAS REALISTAS            -->
+    <!-- =================================================================== -->
+    <svg width="0" height="0" style="position:absolute;visibility:hidden;" aria-hidden="true">
+        <defs>
+            <!-- Terciopelo negro profundo con brillo cenital plateado -->
+            <radialGradient id="roseVelvetCup" cx="48%" cy="22%" r="78%">
+                <stop offset="0%" stop-color="#4e5561"/>
+                <stop offset="30%" stop-color="#22262e"/>
+                <stop offset="70%" stop-color="#101216"/>
+                <stop offset="100%" stop-color="#050608"/>
+            </radialGradient>
+
+            <linearGradient id="rosePetalLeft" x1="0%" y1="5%" x2="100%" y2="90%">
+                <stop offset="0%" stop-color="#8a939e"/>
+                <stop offset="22%" stop-color="#2c313b"/>
+                <stop offset="72%" stop-color="#111318"/>
+                <stop offset="100%" stop-color="#050608"/>
+            </linearGradient>
+
+            <linearGradient id="rosePetalRight" x1="100%" y1="5%" x2="0%" y2="90%">
+                <stop offset="0%" stop-color="#9aa3b0"/>
+                <stop offset="20%" stop-color="#313641"/>
+                <stop offset="72%" stop-color="#12141a"/>
+                <stop offset="100%" stop-color="#050608"/>
+            </linearGradient>
+
+            <linearGradient id="rosePetalCrown" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#cfd6df"/>
+                <stop offset="20%" stop-color="#424954"/>
+                <stop offset="68%" stop-color="#16191f"/>
+                <stop offset="100%" stop-color="#07080a"/>
+            </linearGradient>
+
+            <linearGradient id="roseStemGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#0a0b0d"/>
+                <stop offset="40%" stop-color="#3a414d"/>
+                <stop offset="75%" stop-color="#1a1d24"/>
+                <stop offset="100%" stop-color="#07080a"/>
+            </linearGradient>
+
+            <linearGradient id="roseLeafGrad" x1="10%" y1="0%" x2="90%" y2="100%">
+                <stop offset="0%" stop-color="#767f8c"/>
+                <stop offset="28%" stop-color="#282d36"/>
+                <stop offset="75%" stop-color="#101217"/>
+                <stop offset="100%" stop-color="#060709"/>
+            </linearGradient>
+        </defs>
+    </svg>
+
+    <!-- =================================================================== -->
+    <!-- 1. PANTALLA DE INICIO (PORTADA)                                     -->
+    <!-- =================================================================== -->
+    <section id="intro-screen">
+        <!-- Motas de luz sutiles en el fondo -->
+        <svg style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;" aria-hidden="true">
+            <circle cx="46%" cy="17%" r="1.4" fill="#cfd6df" opacity="0.45"/>
+            <circle cx="56%" cy="29%" r="1.8" fill="#ffffff" opacity="0.55"/>
+            <circle cx="38%" cy="25%" r="1" fill="#8a939e" opacity="0.4"/>
+            <circle cx="63%" cy="38%" r="1.2" fill="#cfd6df" opacity="0.35"/>
+            <circle cx="42%" cy="44%" r="1" fill="#ffffff" opacity="0.3"/>
+        </svg>
+
+        <button id="open-rose-btn" class="rose-trigger" type="button" aria-label="Presiona la rosa negra para abrir la carta">
+            <!-- Rosa Negra Realista de gran tamaño (300x460px) con bordes plateados iluminados -->
+            <svg class="hero-rose-svg" width="300" height="460" viewBox="0 0 300 460" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- TALLO RECTO OSCURO CON ILUMINACIÓN LATERAL Y ESPINAS -->
+                <path d="M150 186 C149 255, 151 335, 150 422" stroke="url(#roseStemGrad)" stroke-width="5.5" stroke-linecap="round"/>
+                <path d="M148.5 190 C147.8 255, 149.2 335, 148.5 418" stroke="#cfd6df" stroke-width="0.9" stroke-opacity="0.55" fill="none"/>
+
+                <!-- Espinas detalladas -->
+                <path d="M152 224 C158 221, 162 217, 164 214 C160 220, 157 227, 152 231 Z" fill="#232730" stroke="#8a939e" stroke-width="0.6"/>
+                <path d="M148 278 C142 275, 138 271, 136 268 C140 274, 143 281, 148 285 Z" fill="#232730" stroke="#8a939e" stroke-width="0.6"/>
+                <path d="M152 346 C157 343, 161 339, 163 336 C159 342, 156 348, 152 352 Z" fill="#232730" stroke="#8a939e" stroke-width="0.6"/>
+
+                <!-- Brote inferior izquierdo -->
+                <path d="M148 334 C139 330, 133 324, 129 316 C134 320, 139 325, 144 329 C142 322, 142 316, 144 312 C146 318, 147 326, 148 334 Z" fill="url(#roseLeafGrad)" stroke="#8a939e" stroke-width="0.7"/>
+
+                <!-- HOJA IZQUIERDA CON NERVADURAS Y BORDES DENTADOS -->
+                <g>
+                    <path d="M148 254 C134 250, 121 246, 110 242" stroke="#2c313b" stroke-width="2.6" stroke-linecap="round"/>
+                    <!-- Hojuela secundaria -->
+                    <path d="M128 247 C126 235, 132 223, 142 219 C140 231, 135 242, 128 247 Z" fill="url(#roseLeafGrad)" stroke="#8a939e" stroke-width="0.8"/>
+                    <!-- Hoja principal izquierda -->
+                    <path d="M114 243 C94 234, 68 235, 46 244 C64 256, 89 259, 114 243 Z" fill="url(#roseLeafGrad)" stroke="#cfd6df" stroke-width="0.95"/>
+                    <!-- Nervadura central y laterales -->
+                    <path d="M112 243 C91 239, 70 239, 50 244" stroke="#cfd6df" stroke-width="0.9" stroke-opacity="0.75" fill="none"/>
+                    <path d="M97 241 L87 236 M83 241 L73 236 M93 242 L83 249 M78 242 L68 248" stroke="#9aa3b0" stroke-width="0.65" stroke-opacity="0.65"/>
+                </g>
+
+                <!-- HOJA DERECHA CON NERVADURAS Y BORDES DENTADOS -->
+                <g>
+                    <path d="M152 292 C166 289, 179 288, 191 288" stroke="#2c313b" stroke-width="2.6" stroke-linecap="round"/>
+                    <!-- Hojuela secundaria -->
+                    <path d="M174 288 C176 276, 185 267, 197 266 C193 276, 184 284, 174 288 Z" fill="url(#roseLeafGrad)" stroke="#8a939e" stroke-width="0.8"/>
+                    <!-- Hoja principal derecha -->
+                    <path d="M187 288 C207 281, 232 288, 251 301 C229 309, 204 305, 187 288 Z" fill="url(#roseLeafGrad)" stroke="#cfd6df" stroke-width="0.95"/>
+                    <!-- Nervadura central y laterales -->
+                    <path d="M189 288 C209 288, 229 293, 247 300" stroke="#cfd6df" stroke-width="0.9" stroke-opacity="0.75" fill="none"/>
+                    <path d="M204 289 L214 286 M218 292 L228 289 M206 291 L215 299 M222 294 L231 300" stroke="#9aa3b0" stroke-width="0.65" stroke-opacity="0.65"/>
+                </g>
+
+                <!-- SÉPALOS FINOS Y CURVOS BAJO EL CAPULLO -->
+                <g>
+                    <path d="M135 178 C140 189, 160 189, 165 178 Z" fill="#1d2129" stroke="#8a939e" stroke-width="0.7"/>
+                    <path d="M136 178 C118 186, 101 185, 87 177 C100 189, 119 190, 138 182 Z" fill="#1d2129" stroke="#9aa3b0" stroke-width="0.8"/>
+                    <path d="M141 182 C132 195, 127 207, 122 216 C131 208, 139 195, 145 183 Z" fill="#171a21" stroke="#8a939e" stroke-width="0.75"/>
+                    <path d="M158 182 C167 196, 174 209, 182 218 C177 206, 170 194, 162 182 Z" fill="#171a21" stroke="#8a939e" stroke-width="0.75"/>
+                    <path d="M164 178 C181 185, 198 184, 211 176 C198 188, 180 189, 162 182 Z" fill="#1d2129" stroke="#9aa3b0" stroke-width="0.8"/>
+                </g>
+
+                <!-- CAPULLO NEGRO ATERCIOPELADO CON BORDES ILUMINADOS EN PLATA -->
+                <g>
+                    <!-- Pétalos traseros superiores -->
+                    <path d="M106 110 C103 86, 124 73, 145 80 C155 72, 181 77, 189 97 C197 115, 182 144, 150 148 C118 144, 105 126, 106 110 Z" fill="url(#rosePetalCrown)" stroke="#cfd6df" stroke-width="1.15"/>
+
+                    <!-- Pétalo exterior izquierdo curvado -->
+                    <path d="M129 178 C94 173, 83 142, 87 121 C82 114, 79 110, 84 108 C96 104, 113 112, 125 134 C133 148, 133 166, 129 178 Z" fill="url(#rosePetalLeft)" stroke="#cfd6df" stroke-width="1.2"/>
+
+                    <!-- Pétalo exterior derecho curvado -->
+                    <path d="M171 178 C206 172, 216 141, 211 121 C216 116, 220 112, 215 109 C202 105, 186 113, 175 134 C167 148, 167 166, 171 178 Z" fill="url(#rosePetalRight)" stroke="#cfd6df" stroke-width="1.2"/>
+
+                    <!-- Copa central aterciopelada -->
+                    <path d="M150 182 C115 182, 102 150, 109 119 C114 99, 133 101, 150 106 C167 101, 186 99, 191 119 C198 150, 185 182, 150 182 Z" fill="url(#roseVelvetCup)" stroke="#9aa3b0" stroke-width="1.05"/>
+
+                    <!-- Pétalo envolvente medio-izquierdo con filo plateado -->
+                    <path d="M147 179 C116 175, 105 144, 114 113 C118 102, 134 98, 152 106 C165 111, 172 125, 167 147 C163 164, 155 175, 147 179 Z" fill="url(#rosePetalLeft)" stroke="#cfd6df" stroke-width="1.25"/>
+
+                    <!-- Pétalo envolvente medio-derecho superpuesto -->
+                    <path d="M153 178 C181 173, 194 143, 186 113 C182 100, 164 96, 147 106 C136 112, 132 128, 138 148 C142 164, 147 174, 153 178 Z" fill="url(#rosePetalRight)" stroke="#cfd6df" stroke-width="1.25"/>
+
+                    <!-- Pliegue superior del corazón -->
+                    <path d="M120 106 C116 91, 132 81, 150 85 C167 81, 182 91, 178 106 C172 117, 160 121, 150 121 C138 121, 127 117, 120 106 Z" fill="url(#rosePetalCrown)" stroke="#cfd6df" stroke-width="1.2"/>
+
+                    <!-- Espiral central apretada iluminada -->
+                    <path d="M129 100 C128 89, 140 82, 151 84 C163 85, 171 93, 168 102 C165 111, 154 115, 144 112 C135 109, 131 102, 136 94 C140 89, 151 88, 158 93 C163 98, 159 106, 151 107 C145 107, 141 102, 145 97 C147 94, 153 95, 153 99" stroke="#e2e8f0" stroke-width="1.55" stroke-linecap="round" fill="none"/>
+
+                    <!-- Contorno inferior de la espiral -->
+                    <path d="M124 104 C126 115, 140 120, 154 119 C168 117, 177 108, 176 98" stroke="#9aa3b0" stroke-width="1.15" stroke-linecap="round" fill="none"/>
+                </g>
+
+                <!-- PÉTALOS CAÍDOS REPOSANDO EN LA PARTE INFERIOR -->
+                <g>
+                    <path d="M90 426 C73 417, 63 430, 77 439 C91 447, 109 438, 102 427 C98 422, 94 427, 90 426 Z" fill="url(#rosePetalLeft)" stroke="#9aa3b0" stroke-width="1"/>
+                    <path d="M200 431 C216 421, 230 433, 217 442 C204 451, 185 443, 190 434 C194 429, 196 433, 200 431 Z" fill="url(#rosePetalRight)" stroke="#9aa3b0" stroke-width="1"/>
+                    <path d="M126 439 C116 435, 112 444, 121 448 C131 452, 142 444, 135 439 Z" fill="url(#roseVelvetCup)" stroke="#8a939e" stroke-width="0.9"/>
+                </g>
+            </svg>
+        </button>
+
+        <p class="intro-prompt">
+            "No esperes algo feliz, pero presiona la rosa y ábreme"
+        </p>
+
+        <span class="intro-hint">Toca la rosa</span>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- 2. CONTENIDO COMPLETO DE LA CARTA                                  -->
+    <!-- =================================================================== -->
+    <main id="letter-wrapper">
+        
+        <!-- Botón discreto para volver a la portada -->
+        <button id="close-letter-btn" class="floating-btn back-to-cover-btn" type="button">
+            ← Volver a la rosa
+        </button>
+
+        <!-- Botón discreto para pausar / reanudar la canción -->
+        <button id="toggle-music-btn" class="floating-btn music-toggle-btn" type="button" aria-label="Pausar o reanudar música">
+            ♫ Pausar
+        </button>
+
+        <!-- BLOQUE 1: Saludo junto a rosa negra decorativa al lado derecho -->
+        <header class="letter-header fade-section">
+            <h1 class="greeting-title">Hola viri.</h1>
+
+            <svg class="inline-rose-svg" width="92" height="135" viewBox="0 0 120 175" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M60 72 C59.5 102, 60.5 132, 60 164" stroke="url(#roseStemGrad)" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M59 102 C47 97, 36 98, 26 102 C34 108, 46 109, 59 102 Z" fill="url(#roseLeafGrad)" stroke="#cfd6df" stroke-width="0.7"/>
+                <path d="M61 118 C72 115, 83 118, 92 124 C82 128, 71 126, 61 118 Z" fill="url(#roseLeafGrad)" stroke="#cfd6df" stroke-width="0.7"/>
+                <path d="M54 70 C46 74, 39 73, 33 69 C39 75, 47 75, 55 72 Z" fill="#1d2129" stroke="#8a939e" stroke-width="0.55"/>
+                <path d="M66 70 C74 74, 81 73, 87 69 C81 75, 73 75, 65 72 Z" fill="#1d2129" stroke="#8a939e" stroke-width="0.55"/>
+                <path d="M51 70 C36 68, 32 54, 34 45 C32 42, 31 40, 33 39 C38 37, 45 41, 50 51 Z" fill="url(#rosePetalLeft)" stroke="#cfd6df" stroke-width="0.8"/>
+                <path d="M69 70 C84 68, 88 54, 86 45 C88 42, 89 40, 87 39 C82 37, 75 41, 70 51 Z" fill="url(#rosePetalRight)" stroke="#cfd6df" stroke-width="0.8"/>
+                <path d="M60 72 C45 72, 40 58, 43 44 C45 36, 53 37, 60 39 C67 37, 75 36, 77 44 C80 58, 75 72, 60 72 Z" fill="url(#roseVelvetCup)" stroke="#9aa3b0" stroke-width="0.75"/>
+                <path d="M59 71 C46 69, 41 55, 45 42 C47 37, 54 36, 61 39 C66 41, 69 47, 67 57 Z" fill="url(#rosePetalLeft)" stroke="#cfd6df" stroke-width="0.85"/>
+                <path d="M61 70 C73 68, 79 55, 75 42 C73 37, 66 36, 59 39 C54 42, 52 49, 55 58 Z" fill="url(#rosePetalRight)" stroke="#cfd6df" stroke-width="0.85"/>
+                <path d="M51 39 C51 33, 56 30, 61 31 C66 31, 69 35, 68 39 C67 43, 62 45, 58 43 C54 42, 52 39, 54 35 C56 33, 61 33, 64 35 C66 37, 64 41, 61 41" stroke="#e2e8f0" stroke-width="1.1" stroke-linecap="round" fill="none"/>
+            </svg>
+        </header>
+
+        <!-- CUERPO DE LA CARTA -->
+        <article class="letter-body">
+
+            <!-- BLOQUE 2 -->
+            <div class="letter-paragraph fade-section">
+                sinceramente no se de que forma empezar esto<br>
+                pero... he mirado tienes nueva pareja y que bueno por ti, No quiero que esto se interprete con una mala percepción.<br>
+                o te enojes, que es lo que menos quiero.
+            </div>
+
+            <!-- BLOQUE 3 (EN GRANDE Y DESTACADO) -->
+            <div class="highlight-large fade-section">
+                Quiero que tengas la certeza de que te quiero mucho y te guardo un gran aprecio.
+            </div>
+
+            <!-- BLOQUE 4 -->
+            <div class="letter-paragraph fade-section">
+                Sin más, estos últimos meses no me he sentido bien. Quizá no sea sorpresa viniendo de mí; no sé si es distimia, ansiedad, o —por lo menos para mí— esas dos cosas son la misma mierda: DEPRESION. Ya te lo había comentado, siento que voy a caer de nuevo.<br>
+                Llevo meses sin poder dormir bien. Paso toda la noche despierto, duermo apenas una o dos horas y luego despierto de malas, siempre enojado. Creo que hasta estrés he de tener. Por las noches siento que no puedo ni respirar y se me acelera el corazón. Me he sentido muy mal. Tú dices que soy fuerte y que todo lo puedo hacer si me lo propongo, ja, pero sabes... ya no soy esa persona.
+            </div>
+
+            <!-- BLOQUE 5 (EN GRANDE Y DESTACADO) -->
+            <div class="highlight-italic-large fade-section">
+                Pero quiero que sepas que...
+            </div>
+
+            <!-- SEPARADOR VISUAL CON ROSA NEGRA -->
+            <div class="rose-divider fade-section" aria-hidden="true">
+                <span class="divider-line"></span>
+                <svg class="divider-rose-svg" width="110" height="165" viewBox="0 0 140 210" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M70 86 C69.5 120, 70.5 156, 70 192" stroke="url(#roseStemGrad)" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M71 112 L76 107 L71 116 Z" fill="#232730" stroke="#8a939e" stroke-width="0.5"/>
+                    <path d="M69 144 L64 139 L69 148 Z" fill="#232730" stroke="#8a939e" stroke-width="0.5"/>
+                    <path d="M69 122 C55 116, 41 117, 29 122 C39 129, 54 130, 69 122 Z" fill="url(#roseLeafGrad)" stroke="#cfd6df" stroke-width="0.75"/>
+                    <path d="M71 142 C84 138, 98 142, 109 150 C97 154, 83 152, 71 142 Z" fill="url(#roseLeafGrad)" stroke="#cfd6df" stroke-width="0.75"/>
+                    <path d="M62 84 C52 88, 43 87, 36 83 C43 90, 53 90, 63 86 Z" fill="#1d2129" stroke="#8a939e" stroke-width="0.6"/>
+                    <path d="M78 84 C88 88, 97 87, 104 83 C97 90, 87 90, 77 86 Z" fill="#1d2129" stroke="#8a939e" stroke-width="0.6"/>
+                    <path d="M60 84 C43 82, 38 66, 40 55 C38 51, 37 49, 39 48 C45 46, 53 50, 59 62 Z" fill="url(#rosePetalLeft)" stroke="#cfd6df" stroke-width="0.9"/>
+                    <path d="M80 84 C97 82, 102 66, 100 55 C102 51, 103 49, 101 48 C95 46, 87 50, 81 62 Z" fill="url(#rosePetalRight)" stroke="#cfd6df" stroke-width="0.9"/>
+                    <path d="M70 86 C53 86, 47 70, 50 54 C53 44, 62 45, 70 48 C78 45, 87 44, 90 54 C93 70, 87 86, 70 86 Z" fill="url(#roseVelvetCup)" stroke="#9aa3b0" stroke-width="0.85"/>
+                    <path d="M69 85 C54 83, 49 67, 53 52 C55 46, 63 44, 71 48 C77 51, 80 58, 78 69 Z" fill="url(#rosePetalLeft)" stroke="#cfd6df" stroke-width="0.95"/>
+                    <path d="M71 84 C85 82, 91 67, 87 52 C85 46, 77 44, 69 48 C64 51, 62 59, 65 70 Z" fill="url(#rosePetalRight)" stroke="#cfd6df" stroke-width="0.95"/>
+                    <path d="M60 47 C59 41, 66 37, 71 38 C77 39, 81 43, 80 48 C78 52, 72 55, 67 53 C63 52, 61 48, 63 44 C65 41, 71 41, 75 43 C77 46, 75 50, 71 50" stroke="#e2e8f0" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+                    <path d="M44 194 C36 189, 31 196, 38 201 C45 205, 54 200, 50 195 Z" fill="url(#rosePetalLeft)" stroke="#8a939e" stroke-width="0.7"/>
+                    <path d="M92 197 C100 192, 106 198, 100 203 C93 207, 84 203, 87 198 Z" fill="url(#rosePetalRight)" stroke="#8a939e" stroke-width="0.7"/>
+                </svg>
+                <span class="divider-line"></span>
+            </div>
+
+            <!-- BLOQUE 6 -->
+            <div class="letter-paragraph fade-section">
+                Sin embargo, cuando me escribes o me marcas para vernos, créeme que cuando estoy contigo se me olvida todo lo anterior. Me siento tan bien a tu lado; reímos, lloramos y siempre tenemos de qué hablar. Incluso, cuando no llego a tener dinero, hasta me siento mal porque siempre me dan muchas ganas de verte.
+            </div>
+
+            <!-- BLOQUE 7 -->
+            <div class="letter-paragraph fade-section">
+                Aun cuando hoy solo seamos amigos, te has transformado en mi puerto seguro. Contigo puedo mostrarme tal cual soy; tienes la libertad de cuestionarme y decirme mis verdades sin que me hiera, porque siempre encuentras la manera de devolverme la perspectiva. Qué privilegio es tener a esa persona con quien desahogar el alma y pasar ratos inolvidables.
+            </div>
+
+            <!-- SEPARADOR CON ROSA NEGRA -->
+            <div class="rose-divider fade-section" aria-hidden="true">
+                <span class="divider-line"></span>
+                <svg width="78" height="115" viewBox="0 0 120 175" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;filter:drop-shadow(0 8px 16px rgba(0,0,0,0.85));">
+                    <path d="M60 72 C59.5 102, 60.5 132, 60 164" stroke="url(#roseStemGrad)" stroke-width="2.6" stroke-linecap="round"/>
+                    <path d="M59 102 C47 97, 36 98, 26 102 C34 108, 46 109, 59 102 Z" fill="url(#roseLeafGrad)" stroke="#cfd6df" stroke-width="0.7"/>
+                    <path d="M61 118 C72 115, 83 118, 92 124 C82 128, 71 126, 61 118 Z" fill="url(#roseLeafGrad)" stroke="#cfd6df" stroke-width="0.7"/>
+                    <path d="M51 70 C36 68, 32 54, 34 45 C32 42, 31 40, 33 39 C38 37, 45 41, 50 51 Z" fill="url(#rosePetalLeft)" stroke="#cfd6df" stroke-width="0.8"/>
+                    <path d="M69 70 C84 68, 88 54, 86 45 C88 42, 89 40, 87 39 C82 37, 75 41, 70 51 Z" fill="url(#rosePetalRight)" stroke="#cfd6df" stroke-width="0.8"/>
+                    <path d="M60 72 C45 72, 40 58, 43 44 C45 36, 53 37, 60 39 C67 37, 75 36, 77 44 C80 58, 75 72, 60 72 Z" fill="url(#roseVelvetCup)" stroke="#9aa3b0" stroke-width="0.75"/>
+                    <path d="M51 39 C51 33, 56 30, 61 31 C66 31, 69 35, 68 39 C67 43, 62 45, 58 43 C54 42, 52 39, 54 35 C56 33, 61 33, 64 35 C66 37, 64 41, 61 41" stroke="#e2e8f0" stroke-width="1.1" stroke-linecap="round" fill="none"/>
+                </svg>
+                <span class="divider-line"></span>
+            </div>
+
+            <!-- BLOQUE 8 -->
+            <div class="letter-paragraph fade-section">
+                El único propósito de estas líneas es desahogarme contigo y que conozcas mi sentir.<br>
+                Respecto a tu relación actual, —y lejos de querer entrometerme—, pero tus publicaciones dejan ver que ya es un compromiso formal. Ambos conocemos tu entrega cuando te enamoras, Me consta que muchas veces me prometiste que tener pareja no cambiaría nuestra cercanía ni nuestras salidas; y, hablando con franqueza, puede que así sea, ¿cierto? Pero, ¿por cuánto lapso? Seguramente un par de meses, porque cuando entregas el corazón priorizas tu relación por encima de todo. (obvio cualquiera lo hace) Ignoro cuánto tiempo nos distancie esto.<br>
+                solo estoy siendo realista viris.
+            </div>
+
+            <!-- BLOQUE 9 -->
+            <div class="letter-paragraph fade-section">
+                Únicamente deseaba que supieras cómo me siento contigo y, como aclaré desde el comienzo, te pido que no lo percibas de mala manera.<br>
+                si algún día nace en ti escribirme, hablarme o compartir un rato juntos, creeme que yo feliz virs, Y si no sucede, ten calma; cuando me necesites, sabes que cuentas con mi presencia incondicional, y conoces de sobra el camino a mi hogar.
+            </div>
+
+            <!-- BLOQUE 10 (Cita con estilo poético y rosa negra) -->
+            <div class="quote-with-rose fade-section">
+                <blockquote class="poetic-quote-box">
+                    <p class="poetic-quote-text">
+                        "Estas rosas y cada uno de sus pétalos representan el vacío que dejara la distancia en nuestra amistad; por esa razón carecen del tono carmesí que me hubiese encantado elegir."
+                    </p>
+                </blockquote>
+            </div>
+
+            <!-- BLOQUE 11 (Cita) -->
+            <blockquote class="poetic-quote-box fade-section">
+                <p class="poetic-quote-text">
+                    "Ya imagino tu respuesta: '¿Eso qué, Jaircito?', o quizá pienses qué pendejadas estoy diciendo, ja. Pero no quería quedarme con el peso de callarlo. Sé que no lo hice frente a ti porque he perdido esa fortaleza y carezco de la entereza necesaria para pronunciar estas palabras; me quebraría en llanto y sería incapaz de terminar de decirte todo esto."
+                </p>
+            </blockquote>
+
+            <!-- BLOQUE 12 -->
+            <div class="letter-paragraph fade-section">
+                se que muy dentro de mi aun hay algo que me hace sentir algo por ti, y si tengo muy metido en la mente que ya no es posible nada, aun asi no quiero que esto arruine nuestra amistad, han sido 3 años muy geniales aun que no nos veamos tan seguido pero fuera de eso como dije cuando estoy contigo olvido lo demas
+            </div>
+
+            <!-- BLOQUE 13 -->
+            <div class="letter-paragraph fade-section">
+                pero bueno viris, no se hasta cuando vuelva a verte, no estoy seguro, o cuando tu quisieras, supongo todo diciembre estaras ocupada pero.
+            </div>
+
+            <!-- BLOQUE 14 (Deseos con espacio entre cada línea) -->
+            <div class="wishes-block fade-section">
+                <p>pasa bonito cumpleaños</p>
+                <p>pasa bonito 24 de diciembre</p>
+                <p>para bonito 31 de diciembre</p>
+            </div>
+
+            <!-- BLOQUE 15 (EN GRANDE Y DESTACADO) -->
+            <div class="highlight-large fade-section" style="padding-top:24px;border-top:1px solid rgba(207,214,223,0.16);">
+                No quiero que me olvides, Así como te quiero y te guardo un inmenso aprecio, te amo, y eres la mejor amiga y la mejor ex que he tenido. Esta vez todo fue distinto, pues por fin logré despedirme de ti sin anhelar desesperadamente un abrazo tuyo como ocurrió la última vez. Eso me provoca una mezcla extraña... ¿alegría tal vez?, ¿melancolía? No sabría definirlo. Pero en fin, aquí permaneceré si algún día me necesitas, Viris.
+            </div>
+
+        </article>
+
+        <!-- ================================================================= -->
+        <!-- 3. PIE DE CARTA: Jair / Kraken (Izquierda) y Firma (Derecha)     -->
+        <!-- ================================================================= -->
+        <footer class="letter-footer fade-section">
+            
+            <!-- Esquina inferior izquierda -->
+            <div class="author-names">
+                <span class="author-name-line">Jair</span>
+                <span class="author-name-line">Kraken</span>
+            </div>
+
+            <!-- Esquina inferior derecha: Firma caligráfica en blanco puro enderezada horizontalmente -->
+            <div class="signature-box" aria-label="Firma de Jair">
+                <svg class="signature-svg" width="230" height="105" viewBox="0 0 280 125" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Trazo superior diagonal cruzado de la inicial J -->
+                    <path d="M22 44 C56 36, 98 25, 136 16" stroke="#ffffff" stroke-width="4.4" stroke-linecap="round"/>
+                    <!-- Lazo izquierdo superior y descenso curvo principal de la J -->
+                    <path d="M98 16 C78 13, 56 16, 48 25 C43 31, 56 39, 82 50 C114 63, 136 80, 128 97 C121 112, 86 118, 48 109" stroke="#ffffff" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- Trazo diagonal inferior de cruce -->
+                    <path d="M24 114 C48 94, 72 72, 92 55" stroke="#ffffff" stroke-width="4.4" stroke-linecap="round"/>
+                    <!-- Espiral / rizo interno inferior -->
+                    <path d="M62 79 C76 74, 92 78, 93 88 C94 96, 84 101, 78 96" stroke="#ffffff" stroke-width="3.8" stroke-linecap="round"/>
+                    <!-- Gota / acento distintivo bajo el trazo izquierdo -->
+                    <path d="M49 54 C42 62, 30 73, 25 80 C22 84, 26 88, 31 85 C37 81, 44 68, 50 56 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
+                    <!-- Continuación manuscrita "air" -->
+                    <path d="M138 44 C131 44, 126 51, 130 56 C134 60, 142 54, 144 46 C144 52, 146 57, 150 57 C154 57, 157 51, 159 46 C159 52, 162 56, 166 56 C170 56, 173 50, 176 46 C178 51, 181 54, 186 53 C192 51, 198 46, 206 43" stroke="#ffffff" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- Punto final -->
+                    <circle cx="163" cy="31" r="3" fill="#ffffff"/>
+                </svg>
+            </div>
+
+        </footer>
+
+    </main>
+
+    <script>
+        (function () {
+            const introScreen = document.getElementById('intro-screen');
+            const openRoseBtn = document.getElementById('open-rose-btn');
+            const letterWrapper = document.getElementById('letter-wrapper');
+            const closeLetterBtn = document.getElementById('close-letter-btn');
+            const fadeSections = document.querySelectorAll('.fade-section');
+
+            // Control de audio
+            const bgMusic = document.getElementById('bg-music');
+            const toggleMusicBtn = document.getElementById('toggle-music-btn');
+
+            function updateMusicButton() {
+                if (bgMusic.paused) {
+                    toggleMusicBtn.textContent = '♫ Reanudar';
+                } else {
+                    toggleMusicBtn.textContent = '♫ Pausar';
+                }
+            }
+
+            // Revelar elementos visibles en pantalla al hacer scroll
+            function revealVisibleSections() {
+                const triggerBottom = window.innerHeight * 0.92;
+                fadeSections.forEach(section => {
+                    const rect = section.getBoundingClientRect();
+                    if (rect.top < triggerBottom) {
+                        section.classList.add('visible');
+                    }
+                });
+            }
+
+            // Abrir la carta y comenzar la canción al presionar la rosa
+            openRoseBtn.addEventListener('click', () => {
+                // Reproducir canción al interactuar con la rosa
+                if (bgMusic) {
+                    bgMusic.volume = 0.85;
+                    const playPromise = bgMusic.play();
+                    if (playPromise !== undefined) {
+                        playPromise
+                            .then(() => updateMusicButton())
+                            .catch(err => console.warn('No se pudo iniciar el audio:', err));
+                    }
+                }
+
+                introScreen.classList.add('hidden-intro');
+                letterWrapper.style.display = 'block';
+                // Forzar reflow para transición suave
+                void letterWrapper.offsetWidth;
+                letterWrapper.classList.add('active-letter');
+                window.scrollTo({ top: 0, behavior: 'instant' });
+                setTimeout(revealVisibleSections, 120);
+            });
+
+            // Pausar o reanudar música manualmente desde el botón superior derecho
+            toggleMusicBtn.addEventListener('click', () => {
+                if (bgMusic.paused) {
+                    bgMusic.play().then(updateMusicButton);
+                } else {
+                    bgMusic.pause();
+                    updateMusicButton();
+                }
+            });
+
+            // Volver a la portada
+            closeLetterBtn.addEventListener('click', () => {
+                if (bgMusic) {
+                    bgMusic.pause();
+                    bgMusic.currentTime = 0;
+                    updateMusicButton();
+                }
+                letterWrapper.classList.remove('active-letter');
+                setTimeout(() => {
+                    letterWrapper.style.display = 'none';
+                    introScreen.classList.remove('hidden-intro');
+                }, 400);
+            });
+
+            window.addEventListener('scroll', revealVisibleSections, { passive: true });
+            window.addEventListener('resize', revealVisibleSections, { passive: true });
+
+            // =================================================================
+            // CANVAS HTML5: PÉTALOS NEGROS CON BORDES PLATEADOS CAYENDO
+            // =================================================================
+            const canvas = document.getElementById('petals-canvas');
+            const ctx = canvas.getContext('2d');
+            let width = canvas.width = window.innerWidth;
+            let height = canvas.height = window.innerHeight;
+
+            window.addEventListener('resize', () => {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+            });
+
+            class FallingBlackPetal {
+                constructor(startRandomY) {
+                    this.reset(startRandomY);
+                }
+
+                reset(startRandomY) {
+                    this.x = Math.random() * width;
+                    this.y = startRandomY ? Math.random() * height : -35;
+                    this.size = 8 + Math.random() * 10;
+                    this.speedY = 0.65 + Math.random() * 1.1;
+                    this.speedX = -0.35 + Math.random() * 0.7;
+                    this.rotation = Math.random() * Math.PI * 2;
+                    this.rotSpeed = (Math.random() - 0.5) * 0.025;
+                    this.swayPhase = Math.random() * Math.PI * 2;
+                    this.swayFreq = 0.014 + Math.random() * 0.018;
+                    this.opacity = 0.48 + Math.random() * 0.42;
+                }
+
+                update() {
+                    this.swayPhase += this.swayFreq;
+                    this.x += this.speedX + Math.sin(this.swayPhase) * 0.55;
+                    this.y += this.speedY;
+                    this.rotation += this.rotSpeed;
+
+                    if (this.y > height + 35 || this.x < -50 || this.x > width + 50) {
+                        this.reset(false);
+                    }
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.rotation);
+                    ctx.globalAlpha = this.opacity;
+
+                    ctx.beginPath();
+                    ctx.moveTo(0, -this.size);
+                    ctx.bezierCurveTo(
+                        this.size * 0.95, -this.size * 0.55,
+                        this.size * 0.85, this.size * 0.72,
+                        0, this.size
+                    );
+                    ctx.bezierCurveTo(
+                        -this.size * 0.85, this.size * 0.72,
+                        -this.size * 0.95, -this.size * 0.55,
+                        0, -this.size
+                    );
+
+                    const grad = ctx.createLinearGradient(-this.size, -this.size, this.size, this.size);
+                    grad.addColorStop(0, '#464d59');
+                    grad.addColorStop(0.55, '#191c22');
+                    grad.addColorStop(1, '#08090c');
+
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+
+                    // Borde plateado suave para alto contraste sobre fondo oscuro
+                    ctx.strokeStyle = 'rgba(207, 214, 223, 0.42)';
+                    ctx.lineWidth = 0.85;
+                    ctx.stroke();
+
+                    ctx.restore();
+                }
+            }
+
+            const count = width < 640 ? 18 : 28;
+            const petals = Array.from({ length: count }, () => new FallingBlackPetal(true));
+
+            function loop() {
+                ctx.clearRect(0, 0, width, height);
+                for (let i = 0; i < petals.length; i++) {
+                    petals[i].update();
+                    petals[i].draw();
+                }
+                requestAnimationFrame(loop);
+            }
+
+            loop();
+        })();
+    </script>
+</body>
+</html>
